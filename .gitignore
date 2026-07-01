@@ -1,0 +1,5 @@
+output/*
+venv/*
+videos/*
+__pycache__/*
+
