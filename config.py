@@ -56,7 +56,7 @@ class Settings:
 
     # ── Pipeline ─────────────────────────────────────────────
     load_delay: float = field(
-        default_factory=lambda: float(os.getenv("LOAD_DELAY", "3.0"))
+        default_factory=lambda: float(os.getenv("LOAD_DELAY", "8.0"))
     )
 
     # ── Paths ────────────────────────────────────────────────
