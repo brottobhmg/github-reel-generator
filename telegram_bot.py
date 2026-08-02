@@ -1,0 +1,199 @@
+"""Telegram bot that triggers the media pipeline.
+
+Users send a GitHub link; the bot runs the pipeline and replies with the
+generated description and video.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime
+
+import telegram
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
+import db
+from config import settings
+from content import GITHUB_REGEX
+from logging_config import get_logger
+from pipeline_core import run_pipeline
+
+logger = get_logger(__name__)
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /start command."""
+    await update.message.reply_text(
+        "Ciao! Inviami un link GitHub e inizierò a lavorarci."
+    )
+
+
+def _load_processed_repos() -> list[str]:
+    """Load the list of already-processed repository URLs."""
+    if not settings.repos_file.exists():
+        return []
+    with open(settings.repos_file, "r", encoding="utf-8") as f:
+        return [
+            line.strip()
+            for line in f
+            if line.strip() and not line.startswith("#")
+        ]
+
+
+def _mark_repo_processed(repo_url: str) -> None:
+    """Append a repository URL to the processed list."""
+    try:
+        with open(settings.repos_file, "a", encoding="utf-8") as f:
+            f.write(f"{repo_url}\n")
+    except OSError as exc:
+        logger.warning("Could not save repo to file: %s", exc)
+
+
+def _format_description_message(desc_path: str, job_id: int) -> str:
+    """Build the human-readable description message from a JSON file."""
+    with open(desc_path, "r", encoding="utf-8") as desc_file:
+        desc_data = json.load(desc_file)
+
+    tags_str = desc_data.get("tag", "")
+    hashtags = []
+    if tags_str:
+        for t in tags_str.split(","):
+            cleaned = t.strip().replace(" ", "")
+            if cleaned:
+                hashtags.append(f"#{cleaned}")
+    hashtags_str = " ".join(hashtags)
+
+    return (
+        f"🆔 ID: {job_id}\n\n"
+        f"✨ TITOLO:\n{desc_data.get('titolo', '')}\n\n"
+        f"📝 DESCRIZIONE POST:\n{desc_data.get('descrizione_post', '')}\n\n"
+        f"🏷️ TAG:\n{tags_str}\n\n"
+        f"🏷️ HASHTAGS:\n{hashtags_str}\n\n"
+        f"🎙️ TESTO TTS:\n{desc_data.get('testo_tts', '')}"
+    )
+
+
+async def gestisci_messaggio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle incoming text messages containing GitHub links."""
+    testo = update.message.text
+    matches = list(GITHUB_REGEX.finditer(testo))
+
+    if not matches:
+        await update.message.reply_text(
+            "Non ho trovato nessun link GitHub valido in questo messaggio."
+        )
+        return
+
+    for match in matches:
+        link = match.group(0)
+        await update.message.reply_text(
+            f"Link GitHub rilevato! Inizio l'elaborazione di: {link}"
+        )
+        logger.info("Processing link: %s", link)
+
+        if link in _load_processed_repos():
+            await update.message.reply_text("Link già processato nel passato! ❌")
+            continue
+
+        try:
+            result = await run_pipeline(link)
+            _mark_repo_processed(link)
+
+            job_id = None
+            try:
+                abs_video = os.path.abspath(result["video_path"])
+                abs_desc = os.path.abspath(result["description_path"])
+                job_id = db.add_job(link, abs_video, abs_desc)
+                logger.info("Logged job ID %s to database.", job_id)
+            except Exception as exc:  # noqa: BLE001 - non-fatal
+                logger.warning("Could not save job to database: %s", exc)
+
+            await update.message.reply_text(result["message"])
+
+            desc_path = result["description_path"]
+            if os.path.exists(desc_path):
+                try:
+                    message = _format_description_message(desc_path, job_id or 0)
+                    await update.message.reply_text(message)
+                except Exception as exc:  # noqa: BLE001 - non-fatal
+                    logger.warning("Error sending description text: %s", exc)
+
+                try:
+                    with open(desc_path, "rb") as desc_file:
+                        await update.message.reply_document(
+                            document=desc_file,
+                            filename="descrizione.json",
+                            caption="📄 File di descrizione e metadati JSON",
+                        )
+                except Exception as exc:  # noqa: BLE001 - non-fatal
+                    logger.warning("Error sending description file: %s", exc)
+
+            video_path = result["video_path"]
+            if os.path.exists(video_path):
+                await update.message.reply_text("📤 Invio del video reel in corso... ⏳")
+                try:
+                    with open(video_path, "rb") as video_file:
+                        await update.message.reply_document(
+                            document=video_file,
+                            filename=f"{result['repo_name']}_reel.mp4",
+                            caption=f"🎥 Reel per {result['repo_name']}",
+                        )
+                except Exception as exc:  # noqa: BLE001 - non-fatal
+                    await update.message.reply_text(
+                        f"❌ Errore nell'invio del file video: {exc}"
+                    )
+
+        except Exception as exc:  # noqa: BLE001 - report to user
+            logger.exception("Pipeline failed for %s", link)
+            await update.message.reply_text(
+                f"❌ Errore durante la pipeline per {link}: {exc}"
+            )
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle Telegram network and API errors."""
+    error = context.error
+    if isinstance(error, telegram.error.NetworkError):
+        logger.warning("NetworkError: %s", error)
+    elif isinstance(error, telegram.error.TimedOut):
+        logger.warning("TimedOut: %s", error)
+    elif isinstance(error, telegram.error.RetryAfter):
+        logger.warning("RetryAfter: retry in %s seconds.", error.retry_after)
+    elif isinstance(error, telegram.error.Conflict):
+        logger.warning("Conflict (another instance running?): %s", error)
+    elif isinstance(error, telegram.error.Unauthorized):
+        logger.warning("Unauthorized (invalid/revoked token): %s", error)
+    else:
+        logger.error("Unknown error %s: %s", type(error).__name__, error)
+
+    try:
+        with open("bot_errors.log", "a", encoding="utf-8") as f:
+            f.write(
+                f"[{datetime.now().isoformat()}] "
+                f"{type(error).__name__}: {error}\n"
+            )
+    except OSError:
+        pass
+
+
+def run_bot() -> None:
+    """Start the Telegram bot in polling mode."""
+    if not settings.telegram_bot_token:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured.")
+
+    application = Application.builder().token(settings.telegram_bot_token).build()
+    application.add_error_handler(error_handler)
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, gestisci_messaggio)
+    )
+    logger.info("Bot listening (polling)... Press Ctrl+C to stop.")
+    application.run_polling()
