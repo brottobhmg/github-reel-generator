@@ -36,10 +36,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+def _ensure_repos_file() -> None:
+    """Create the processed-repos file on first run if it does not exist."""
+    settings.repos_file.parent.mkdir(parents=True, exist_ok=True)
+    if not settings.repos_file.exists():
+        settings.repos_file.touch()
+        logger.info("Created processed-repos file at %s", settings.repos_file)
+
+
 def _load_processed_repos() -> list[str]:
     """Load the list of already-processed repository URLs."""
-    if not settings.repos_file.exists():
-        return []
+    _ensure_repos_file()
     with open(settings.repos_file, "r", encoding="utf-8") as f:
         return [
             line.strip()
@@ -50,6 +57,7 @@ def _load_processed_repos() -> list[str]:
 
 def _mark_repo_processed(repo_url: str) -> None:
     """Append a repository URL to the processed list."""
+    _ensure_repos_file()
     try:
         with open(settings.repos_file, "a", encoding="utf-8") as f:
             f.write(f"{repo_url}\n")

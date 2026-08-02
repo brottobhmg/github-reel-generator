@@ -64,6 +64,10 @@ videos/
 *.mkv
 mobile_preview.html
 
+# ── Runtime state ───────────────────────────────────────────
+# List of already-processed repositories (created on first run)
+repos
+
 # ── OS / editor ─────────────────────────────────────────────
 .DS_Store
 Thumbs.db
