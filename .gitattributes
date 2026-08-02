@@ -1,0 +1,11 @@
+# Force LF line endings for shell scripts to avoid CRLF shebang issues
+*.sh text eol=lf
+
+# Normalize line endings for source files
+*.py text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.example text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
