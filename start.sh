@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# start.sh - Setup + avvio server FastAPI e pipeline Telegram
+# start.sh - Setup + start FastAPI server and Telegram pipeline
 # ============================================================
 
 set -e
@@ -8,52 +8,52 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
-# ── 0. Setup iniziale (una tantum) ──────────────────────────
+# ── 0. Initial setup (one-time) ─────────────────────────────
 if [ ! -d "venv" ]; then
-    echo "📦 Creazione virtual environment..."
+    echo "📦 Creating virtual environment..."
     python3 -m venv venv
 fi
 
 source venv/bin/activate
 
 if [ ! -f ".env" ]; then
-    echo "⚠️  File .env non trovato. Copia .env.example in .env e inserisci le chiavi."
+    echo "⚠️  .env file not found. Copy .env.example to .env and add your keys."
     exit 1
 fi
 
-# Carica le variabili d'ambiente dal file .env
+# Load environment variables from the .env file
 set -a
 # shellcheck disable=SC1091
 source "$PROJECT_DIR/.env"
 set +a
 
-# Installa le dipendenze se necessario
+# Install dependencies if needed
 pip install -r requirements.txt >/dev/null 2>&1 || true
 
 mkdir -p "$PROJECT_DIR/logs"
 
-# ── 1. Avvia il server FastAPI con uvicorn ──────────────────
-echo "🚀 Avvio server FastAPI (uvicorn) sulla porta 8000..."
+# ── 1. Start the FastAPI server with uvicorn ────────────────
+echo "🚀 Starting FastAPI server (uvicorn) on port 8000..."
 nohup uvicorn server:app --host 0.0.0.0 --port 8000 \
     > "$PROJECT_DIR/logs/server.log" 2>&1 &
 SERVER_PID=$!
 echo "   ✅ Server PID: $SERVER_PID"
 
-# ── 2. Avvia la pipeline Telegram bot ────────────────────────
-echo "🤖 Avvio pipeline Telegram bot..."
+# ── 2. Start the Telegram bot pipeline ──────────────────────
+echo "🤖 Starting Telegram bot pipeline..."
 nohup python pipeline.py \
     > "$PROJECT_DIR/logs/pipeline.log" 2>&1 &
 PIPELINE_PID=$!
 echo "   ✅ Pipeline PID: $PIPELINE_PID"
 
-# ── 3. Salva i PID per eventuale stop ────────────────────────
+# ── 3. Save PIDs for later stop ─────────────────────────────
 echo "$SERVER_PID" > "$PROJECT_DIR/.server.pid"
 echo "$PIPELINE_PID" > "$PROJECT_DIR/.pipeline.pid"
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "  ✅ Progetto avviato con successo!"
+echo "  ✅ Project started successfully!"
 echo "  📍 Server:  http://localhost:8000"
 echo "  📍 Logs:    $PROJECT_DIR/logs/"
-echo "  📍 Per fermare:  ./stop.sh"
+echo "  📍 To stop:  ./stop.sh"
 echo "═══════════════════════════════════════════════════════"

@@ -88,22 +88,22 @@ sequenceDiagram
     participant Client as job_runner.py
     participant Server as Backend API
 
-    loop Polling (ogni POLL_INTERVAL s)
+    loop Polling (every POLL_INTERVAL s)
         Client->>Server: GET /api/next-job
-        Server-->>Client: {id, source_link} oppure {status: "no_jobs"}
+        Server-->>Client: {id, source_link} or {status: "no_jobs"}
     end
 
     Client->>Server: GET /api/download/{id}/video
-    Server-->>Client: video (binario)
+    Server-->>Client: video (binary)
 
     Client->>Server: GET /api/download/{id}/json
     Server-->>Client: {descrizione_post, tag, titolo}
 
-    Note over Client: Push video su Android + upload social
+    Note over Client: Push video to Android + social upload
 
-    alt Successo
+    alt Success
         Client->>Server: POST /api/job-completed/{id}
-    else Fallimento
+    else Failure
         Client->>Server: POST /api/job-failed/{id}
     end
 ```
@@ -133,9 +133,9 @@ Returns the post metadata JSON (client timeout: 10s).
 
 ```json
 {
-  "descrizione_post": "Testo della descrizione del post",
-  "tag": "tech, python, automazione",
-  "titolo": "Titolo del video (usato per YouTube)"
+  "descrizione_post": "Text of the post description",
+  "tag": "tech, python, automation",
+  "titolo": "Video title (used for YouTube)"
 }
 ```
 

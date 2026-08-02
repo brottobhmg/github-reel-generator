@@ -32,7 +32,7 @@ logger = get_logger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /start command."""
     await update.message.reply_text(
-        "Ciao! Inviami un link GitHub e inizierò a lavorarci."
+        "Hi! Send me a GitHub link and I'll start working on it."
     )
 
 
@@ -73,34 +73,34 @@ def _format_description_message(desc_path: str, job_id: int) -> str:
 
     return (
         f"🆔 ID: {job_id}\n\n"
-        f"✨ TITOLO:\n{desc_data.get('titolo', '')}\n\n"
-        f"📝 DESCRIZIONE POST:\n{desc_data.get('descrizione_post', '')}\n\n"
-        f"🏷️ TAG:\n{tags_str}\n\n"
+        f"✨ TITLE:\n{desc_data.get('titolo', '')}\n\n"
+        f"📝 POST DESCRIPTION:\n{desc_data.get('descrizione_post', '')}\n\n"
+        f"🏷️ TAGS:\n{tags_str}\n\n"
         f"🏷️ HASHTAGS:\n{hashtags_str}\n\n"
-        f"🎙️ TESTO TTS:\n{desc_data.get('testo_tts', '')}"
+        f"🎙️ TTS TEXT:\n{desc_data.get('testo_tts', '')}"
     )
 
 
-async def gestisci_messaggio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming text messages containing GitHub links."""
-    testo = update.message.text
-    matches = list(GITHUB_REGEX.finditer(testo))
+    text = update.message.text
+    matches = list(GITHUB_REGEX.finditer(text))
 
     if not matches:
         await update.message.reply_text(
-            "Non ho trovato nessun link GitHub valido in questo messaggio."
+            "I couldn't find any valid GitHub link in this message."
         )
         return
 
     for match in matches:
         link = match.group(0)
         await update.message.reply_text(
-            f"Link GitHub rilevato! Inizio l'elaborazione di: {link}"
+            f"GitHub link detected! Starting processing of: {link}"
         )
         logger.info("Processing link: %s", link)
 
         if link in _load_processed_repos():
-            await update.message.reply_text("Link già processato nel passato! ❌")
+            await update.message.reply_text("Link already processed in the past! ❌")
             continue
 
         try:
@@ -131,30 +131,30 @@ async def gestisci_messaggio(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         await update.message.reply_document(
                             document=desc_file,
                             filename="descrizione.json",
-                            caption="📄 File di descrizione e metadati JSON",
+                            caption="📄 Description and metadata JSON file",
                         )
                 except Exception as exc:  # noqa: BLE001 - non-fatal
                     logger.warning("Error sending description file: %s", exc)
 
             video_path = result["video_path"]
             if os.path.exists(video_path):
-                await update.message.reply_text("📤 Invio del video reel in corso... ⏳")
+                await update.message.reply_text("📤 Sending the reel video... ⏳")
                 try:
                     with open(video_path, "rb") as video_file:
                         await update.message.reply_document(
                             document=video_file,
                             filename=f"{result['repo_name']}_reel.mp4",
-                            caption=f"🎥 Reel per {result['repo_name']}",
+                            caption=f"🎥 Reel for {result['repo_name']}",
                         )
                 except Exception as exc:  # noqa: BLE001 - non-fatal
                     await update.message.reply_text(
-                        f"❌ Errore nell'invio del file video: {exc}"
+                        f"❌ Error sending the video file: {exc}"
                     )
 
         except Exception as exc:  # noqa: BLE001 - report to user
             logger.exception("Pipeline failed for %s", link)
             await update.message.reply_text(
-                f"❌ Errore durante la pipeline per {link}: {exc}"
+                f"❌ Error during the pipeline for {link}: {exc}"
             )
 
 
@@ -193,7 +193,7 @@ def run_bot() -> None:
     application.add_error_handler(error_handler)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, gestisci_messaggio)
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
     )
     logger.info("Bot listening (polling)... Press Ctrl+C to stop.")
     application.run_polling()

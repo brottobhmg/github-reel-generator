@@ -108,7 +108,7 @@ async def run_pipeline(repo_url: str) -> dict:
         if tmp.exists():
             tmp.unlink()
 
-    msg = f"🚀 Pipeline completata con successo! Video salvato in: {final_mp4}"
+    msg = f"🚀 Pipeline completed successfully! Video saved to: {final_mp4}"
     logger.info(msg)
     return {
         "message": msg,

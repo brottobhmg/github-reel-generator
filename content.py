@@ -193,15 +193,15 @@ async def generate_post_description(readme_text: str, web_context: str = "") -> 
     """
     reference = _build_reference(readme_text, web_context)
     prompt = (
-        "Sei un esperto copywriter per i social media. Scrivi una descrizione esplicativa e accattivante per la seguente repository GitHub.\n"
-        "La descrizione deve essere scritta in lingua inglese, deve essere fluida e discorsiva.\n"
-        "Concentrati sulle seguenti linee guida:\n"
-        "- La descrizione deve essere di circa 200 parole.\n"
-        "- Spiega in modo chiaro cos'è la repo, cosa fa e che compito/problema permette di risolvere agli sviluppatori.\n"
-        "- Descrivi le caratteristiche principali e in quali scenari pratici è utile utilizzare questo strumento.\n"
-        "- Evita dettagli superflui di installazione, configurazione o comandi shell.\n"
-        "- NON utilizzare formattazioni in stile Markdown come asterischi (es. **grassetto**, *corsivo*) o trattini bassi. Scrivi solo in testo semplice non formattato.\n"
-        "Restituisci SOLO la descrizione, nient'altro.\n\n"
+        "You are an expert social media copywriter. Write an explanatory and engaging description for the following GitHub repository.\n"
+        "The description must be written in English, and must be fluent and conversational.\n"
+        "Follow these guidelines:\n"
+        "- The description should be about 200 words.\n"
+        "- Clearly explain what the repo is, what it does, and what task/problem it helps developers solve.\n"
+        "- Describe the main features and in which practical scenarios this tool is useful.\n"
+        "- Avoid unnecessary installation, configuration, or shell command details.\n"
+        "- Do NOT use Markdown-style formatting such as asterisks (e.g. **bold**, *italic*) or underscores. Write only in plain, unformatted text.\n"
+        "Return ONLY the description, nothing else.\n\n"
         f"Text to describe:\n{reference}"
     )
     description = await safe_chat_completion(prompt, temperature=0.5)
@@ -220,9 +220,9 @@ async def generate_title(readme_text: str, web_context: str = "") -> str:
     """
     reference = _build_reference(readme_text, web_context)
     prompt = (
-        "Genera un titolo accattivante ed esplicativo di circa una singola frase per la seguente repository GitHub.\n"
-        "Il titolo deve essere in lingua inglese, di massimo 90 caratteri per sicurezza, e riassumere il valore principale del progetto.\n"
-        "Restituisci SOLO il titolo in testo semplice, senza virgolette e senza alcuna formattazione.\n\n"
+        "Generate a catchy and explanatory title of about a single sentence for the following GitHub repository.\n"
+        "The title must be in English, at most 90 characters for safety, and summarize the main value of the project.\n"
+        "Return ONLY the title in plain text, without quotes and without any formatting.\n\n"
         f"Text:\n{reference}"
     )
     title = await safe_chat_completion(prompt, temperature=0.7)
@@ -241,13 +241,13 @@ async def generate_tags(readme_text: str, web_context: str = "") -> str:
     """
     reference = _build_reference(readme_text, web_context)
     prompt = (
-        "Genera una lista di tag/parole chiave relative al contenuto della seguente repository GitHub, senza il simbolo cancelletto (#). Poni come primi tag i seguenti: 'github' 'foryou' 'ai'.\n"
-        "I tag devono essere separati da virgole. Assicurati di generare i restanti tag necessari per arrivare al limite di 450 caratteri (minimo 10 parole), inserendo termini anche generali su IA e Github, e considera che il limite è da assolutamente non superare, fai un doppio controllo per verificare di non superare quel numero.\n"
-        "REGOLE OBBLIGATORIE PER I TAG:\n"
-        "- Ogni tag deve essere composto ESCLUSIVAMENTE da testo semplice (lettere e/o cifre), senza trattini (-), trattini bassi (_), barre (/), barre inverse (\\), punti (.) o qualsiasi altro carattere speciale.\n"
-        "- Se un concetto è composto da più parole (es. 'machine learning'), scrivilo senza spazi come una sola parola (es. 'machinelearning') oppure scegli una singola parola rappresentativa.\n"
-        "- NON usare mai trattini, slash o caratteri speciali nei tag, pena l'invalidazione della risposta.\n"
-        "Restituisci SOLO la lista di tag separati da virgole, nient'altro.\n\n"
+        "Generate a list of tags/keywords related to the content of the following GitHub repository, without the hash symbol (#). Put the following tags first: 'github' 'foryou' 'ai'.\n"
+        "The tags must be separated by commas. Make sure to generate the remaining tags needed to reach the 450-character limit (at least 10 words), including general terms about AI and GitHub, and consider that the limit must absolutely not be exceeded; double-check to verify you do not exceed that number.\n"
+        "MANDATORY TAG RULES:\n"
+        "- Each tag must consist EXCLUSIVELY of plain text (letters and/or digits), without hyphens (-), underscores (_), slashes (/), backslashes (\\), periods (.) or any other special character.\n"
+        "- If a concept is made of multiple words (e.g. 'machine learning'), write it without spaces as a single word (e.g. 'machinelearning') or choose a single representative word.\n"
+        "- NEVER use hyphens, slashes or special characters in tags, or the response will be invalidated.\n"
+        "Return ONLY the comma-separated list of tags, nothing else.\n\n"
         f"Text:\n{reference}"
     )
     tags_raw = await safe_chat_completion(prompt, temperature=0.5)
@@ -266,18 +266,18 @@ async def validate_and_fix_json(desc_data: dict, repo_url: str) -> dict:
     """
     json_str = json.dumps(desc_data, ensure_ascii=False, indent=2)
     prompt = (
-        "Sei un esperto revisore di contenuti per social media. Ti viene fornito un oggetto JSON con i metadati "
-        "di un video reel relativo alla repository GitHub seguente:\n"
+        "You are an expert social media content reviewer. You are given a JSON object with the metadata "
+        "of a video reel related to the following GitHub repository:\n"
         f"Repository URL: {repo_url}\n\n"
-        "L'oggetto JSON è il seguente:\n"
+        "The JSON object is the following:\n"
         f"{json_str}\n\n"
-        "Verifica e correggi i seguenti aspetti per ciascun campo:\n"
-        "1. 'titolo': deve essere in inglese, sensato, pertinente alla repository, max 100 caratteri, testo semplice senza formattazione Markdown.\n"
-        "2. 'descrizione_post': deve essere in inglese, fluida, circa 200 parole, pertinente alla repository, testo semplice senza formattazione Markdown (niente asterischi, niente bullet point, niente trattini come liste).\n"
-        "3. 'tag': deve essere una stringa di tag separati da virgole. REGOLA CRITICA: ogni singolo tag deve contenere ESCLUSIVAMENTE lettere e/o cifre, senza trattini (-), trattini bassi (_), barre (/), punti (.) o qualsiasi altro carattere speciale. Se trovi tag con caratteri speciali, rimuovili o unisci le parole senza separatori. I tag devono essere pertinenti alla repository.\n"
-        "4. 'testo_tts': deve essere in inglese, scorrevole per la lettura ad alta voce, tra 100 e 250 parole, pertinente alla repository, senza comandi shell o frammenti di codice.\n\n"
-        "Se uno o più campi contengono errori, correggili. Se sono tutti corretti, restituiscili invariati.\n"
-        "IMPORTANTE: restituisci ESCLUSIVAMENTE l'oggetto JSON corretto, senza testo introduttivo, senza commenti, senza blocchi markdown (no ```json). Solo il JSON grezzo."
+        "Verify and correct the following aspects for each field:\n"
+        "1. 'titolo': must be in English, sensible, relevant to the repository, max 100 characters, plain text without Markdown formatting.\n"
+        "2. 'descrizione_post': must be in English, fluent, about 200 words, relevant to the repository, plain text without Markdown formatting (no asterisks, no bullet points, no dashes as lists).\n"
+        "3. 'tag': must be a comma-separated string of tags. CRITICAL RULE: each single tag must contain EXCLUSIVELY letters and/or digits, without hyphens (-), underscores (_), slashes (/), periods (.) or any other special character. If you find tags with special characters, remove them or join the words without separators. The tags must be relevant to the repository.\n"
+        "4. 'testo_tts': must be in English, smooth for reading aloud, between 100 and 250 words, relevant to the repository, without shell commands or code fragments.\n\n"
+        "If one or more fields contain errors, correct them. If they are all correct, return them unchanged.\n"
+        "IMPORTANT: return EXCLUSIVELY the corrected JSON object, without introductory text, without comments, without markdown blocks (no ```json). Only the raw JSON."
     )
     try:
         raw = await safe_chat_completion(prompt, temperature=0.3)
