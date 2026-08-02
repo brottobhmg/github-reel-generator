@@ -98,7 +98,9 @@ def get_next_job() -> dict | None:
                 (now, job_id),
             )
             conn.commit()
-            return dict(row)
+            job = dict(row)
+            job["status"] = "processing"
+            return job
         conn.commit()
         return None
     except Exception:
