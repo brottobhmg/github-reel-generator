@@ -68,6 +68,10 @@ mobile_preview.html
 # List of already-processed repositories (created on first run)
 repos
 
+# ── Local tool runs ─────────────────────────────────────────
+# Output dirs of the "strix" agent runs (SARIF reports, state DBs, logs)
+strix_runs/
+
 # ── OS / editor ─────────────────────────────────────────────
 .DS_Store
 Thumbs.db
