@@ -33,8 +33,8 @@ pip install -r requirements.txt >/dev/null 2>&1 || true
 mkdir -p "$PROJECT_DIR/logs"
 
 # ── 1. Start the FastAPI server with uvicorn ────────────────
-echo "🚀 Starting FastAPI server (uvicorn) on port 8000..."
-nohup uvicorn server:app --host 0.0.0.0 --port 8000 \
+echo "🚀 Starting FastAPI server (uvicorn) on port 8006..."
+nohup uvicorn server:app --host 0.0.0.0 --port 8006 \
     > "$PROJECT_DIR/logs/server.log" 2>&1 &
 SERVER_PID=$!
 echo "   ✅ Server PID: $SERVER_PID"
@@ -53,7 +53,7 @@ echo "$PIPELINE_PID" > "$PROJECT_DIR/.pipeline.pid"
 echo ""
 echo "═══════════════════════════════════════════════════════"
 echo "  ✅ Project started successfully!"
-echo "  📍 Server:  http://localhost:8000"
+echo "  📍 Server:  http://localhost:8006"
 echo "  📍 Logs:    $PROJECT_DIR/logs/"
 echo "  📍 To stop:  ./stop.sh"
 echo "═══════════════════════════════════════════════════════"
