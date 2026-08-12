@@ -98,9 +98,12 @@ async def record_github_scroll(
         # page at 60 fps (requestAnimationFrame) with a setInterval fallback.
         # Position is computed from elapsed time, so throttled/dropped frames
         # cannot stall or stutter the scroll. A Python-side loop (evaluate +
-        # sleep per step) caused visible lag in the recording.
+        # sleep per step) caused visible lag in the recording. GitHub sets
+        # `scroll-behavior: smooth`, which would restart a browser-side
+        # animation on every scrollTo: it must be forced to 'auto' first.
         await page.evaluate(
             """({ duration, maxScroll }) => new Promise((resolve) => {
+                document.documentElement.style.scrollBehavior = 'auto';
                 const durationMs = duration * 1000;
                 const scroller = document.scrollingElement || document.documentElement;
                 const limit = Math.max(0, Math.min(
