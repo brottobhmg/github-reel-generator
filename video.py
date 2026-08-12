@@ -64,6 +64,21 @@ async def record_github_scroll(
         total_scroll = await page.evaluate(
             "document.body.scrollHeight - window.innerHeight"
         )
+        # Diagnostic: also measure scrollHeight on documentElement and the
+        # actual scrollable height, since GitHub may scroll on a different
+        # container than document.body.
+        diag = await page.evaluate(
+            """() => ({
+                bodyScrollHeight: document.body.scrollHeight,
+                docScrollHeight: document.documentElement.scrollHeight,
+                innerHeight: window.innerHeight,
+                bodyClientHeight: document.body.clientHeight,
+                docClientHeight: document.documentElement.clientHeight,
+            })"""
+        )
+        print(f"[SCROLL-DIAG] {diag}")
+        print(f"[SCROLL-DIAG] total_scroll (body) = {total_scroll}px")
+
         if total_scroll > 0 and duration > 0:
             scroll_speed = min(MAX_SCROLL_SPEED, total_scroll / duration)
         else:
@@ -75,31 +90,42 @@ async def record_github_scroll(
             duration,
             scroll_speed,
         )
-
-        await page.evaluate(
-            """async (args) => {
-                const { duration, speed, maxScroll } = args;
-                return new Promise((resolve) => {
-                    const start = performance.now();
-                    function step(timestamp) {
-                        const elapsed = (timestamp - start) / 1000;
-                        const pos = Math.min(elapsed * speed, maxScroll);
-                        window.scrollTo(0, pos);
-                        if (elapsed < duration && pos < maxScroll) {
-                            requestAnimationFrame(step);
-                        } else {
-                            resolve();
-                        }
-                    }
-                    requestAnimationFrame(step);
-                });
-            }""",
-            {
-                "duration": duration,
-                "speed": scroll_speed,
-                "maxScroll": max(total_scroll, 0),
-            },
+        print(
+            f"[SCROLL-DIAG] duration={duration}s, scroll_speed={scroll_speed:.2f} px/s"
         )
+
+        # Scroll in-browser: a single evaluate runs the animation inside the
+        # page at 60 fps (requestAnimationFrame) with a setInterval fallback.
+        # Position is computed from elapsed time, so throttled/dropped frames
+        # cannot stall or stutter the scroll. A Python-side loop (evaluate +
+        # sleep per step) caused visible lag in the recording.
+        await page.evaluate(
+            """({ duration, maxScroll }) => new Promise((resolve) => {
+                const durationMs = duration * 1000;
+                const scroller = document.scrollingElement || document.documentElement;
+                const limit = Math.max(0, Math.min(
+                    maxScroll, scroller.scrollHeight - window.innerHeight
+                ));
+                const start = performance.now();
+                let finished = false;
+                const finish = () => {
+                    if (!finished) { finished = true; clearInterval(timer); resolve(); }
+                };
+                const step = () => {
+                    const t = Math.min((performance.now() - start) / durationMs, 1);
+                    window.scrollTo(0, t * limit);
+                    if (t >= 1) finish();
+                };
+                const timer = setInterval(step, 16);
+                const raf = () => { step(); if (!finished) requestAnimationFrame(raf); };
+                requestAnimationFrame(raf);
+            })""",
+            {"duration": duration, "maxScroll": max(total_scroll, 0)},
+        )
+
+        # Diagnostic: verify the final scroll position actually applied.
+        final_pos = await page.evaluate("window.scrollY")
+        print(f"[SCROLL-DIAG] final scrollY = {final_pos}px (expected ~{total_scroll}px)")
 
         video_path = await page.video.path()
         await browser.close()
