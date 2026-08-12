@@ -34,6 +34,9 @@ def _build_clients() -> tuple[AsyncOpenAI | None, AsyncOpenAI | None, AsyncOpenA
             api_key=settings.nvidia_nim_api_key,
             base_url="https://integrate.api.nvidia.com/v1",
             timeout=settings.nim_timeout,
+            # Un solo retry: fallire presto e passare al modello successivo
+            # è meglio che aspettare i 3 retry di default dell'SDK.
+            max_retries=1,
         )
         if settings.nvidia_nim_api_key
         else None
@@ -42,6 +45,8 @@ def _build_clients() -> tuple[AsyncOpenAI | None, AsyncOpenAI | None, AsyncOpenA
         AsyncOpenAI(
             api_key=settings.openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
+            timeout=settings.openrouter_timeout,
+            max_retries=1,
         )
         if settings.openrouter_api_key
         else None

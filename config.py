@@ -56,7 +56,7 @@ class Settings:
 
     # ── Pipeline ─────────────────────────────────────────────
     load_delay: float = field(
-        default_factory=lambda: float(os.getenv("LOAD_DELAY", "8.0"))
+        default_factory=lambda: float(os.getenv("LOAD_DELAY", "3.0"))
     )
 
     # ── Paths ────────────────────────────────────────────────
@@ -79,15 +79,23 @@ class Settings:
     nim_models: tuple[str, ...] = (
         "nvidia/nemotron-3-super-120b-a12b",
         "openai/gpt-oss-120b",
-        "stepfun/step-3.5-flash",
+        "z-ai/glm-5.2",
+        "minimaxai/minimax-m3",
     )
     openrouter_models: tuple[str, ...] = (
         "nvidia/nemotron-3-super-120b-a12b:free",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         "nvidia/nemotron-3-ultra-550b-a55b:free",
     )
-    nim_timeout: float = 40.0
-    openrouter_timeout: float = 40.0
+    # Timeout per modello: i tier gratuiti (NIM/OpenRouter :free) sono lenti
+    # sotto carico; valori troppo bassi causano timeout a cascata anche quando
+    # la quota non è esaurita.
+    nim_timeout: float = field(
+        default_factory=lambda: float(os.getenv("NIM_TIMEOUT", "180"))
+    )
+    openrouter_timeout: float = field(
+        default_factory=lambda: float(os.getenv("OPENROUTER_TIMEOUT", "180"))
+    )
 
     @property
     def has_llm_keys(self) -> bool:
